@@ -146,14 +146,17 @@ func (w *SpanWriter) backgroundWriter(maxSpanCount int) {
 
 // WriteSpan writes the encoded span
 func (w *SpanWriter) WriteSpan(ctx context.Context, span *model.Span) error {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
+	tenant := ""
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
 		tenants := md.Get("x-tenant")
-		if len(tenants) == 0 {
-			w.spans <- SpanAndTenant{span, ""}
-		} else {
-			w.spans <- SpanAndTenant{span, tenants[0]}
+		if len(tenants) != 0 {
+			tenant = tenants[0]
 		}
 	}
+
+	w.spans <- SpanAndTenant{span, tenant}
 
 	return nil
 }
