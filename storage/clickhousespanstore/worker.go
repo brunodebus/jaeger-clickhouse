@@ -21,7 +21,7 @@ type WriteWorker struct {
 	// workerID is an arbitrary identifier for keeping track of this worker in logs
 	workerID   int32
 	params     *WorkerParams
-	batch      []*model.Span
+	batch      []SpanAndTenant
 	finish     chan bool
 	workerDone chan *WriteWorker
 	done       sync.WaitGroup
@@ -74,7 +74,7 @@ func (worker *WriteWorker) close() {
 	worker.workerDone <- worker
 }
 
-func (worker *WriteWorker) writeBatch(batch []*model.Span) error {
+func (worker *WriteWorker) writeBatch(batch []SpanAndTenant) error {
 	worker.params.logger.Debug("Writing spans", "size", len(batch))
 	if err := worker.writeModelBatch(batch); err != nil {
 		return err
@@ -89,7 +89,7 @@ func (worker *WriteWorker) writeBatch(batch []*model.Span) error {
 	return nil
 }
 
-func (worker *WriteWorker) writeModelBatch(batch []*model.Span) error {
+func (worker *WriteWorker) writeModelBatch(batch []SpanAndTenant) error {
 	tx, err := worker.params.db.Begin()
 	if err != nil {
 		return err
@@ -118,8 +118,10 @@ func (worker *WriteWorker) writeModelBatch(batch []*model.Span) error {
 
 	defer statement.Close()
 
-	for _, span := range batch {
+	for _, spanAndTenant := range batch {
 		var serialized []byte
+
+		span := spanAndTenant.span
 
 		if worker.params.encoding == EncodingJSON {
 			serialized, err = json.Marshal(span)
@@ -134,7 +136,13 @@ func (worker *WriteWorker) writeModelBatch(batch []*model.Span) error {
 		if worker.params.tenant == "" {
 			_, err = statement.Exec(span.StartTime, span.TraceID.String(), serialized)
 		} else {
-			_, err = statement.Exec(worker.params.tenant, span.StartTime, span.TraceID.String(), serialized)
+			tenant := worker.params.tenant
+
+			if spanAndTenant.tenant != "" {
+				tenant = spanAndTenant.tenant
+			}
+
+			_, err = statement.Exec(tenant, span.StartTime, span.TraceID.String(), serialized)
 		}
 		if err != nil {
 			return err
@@ -146,7 +154,7 @@ func (worker *WriteWorker) writeModelBatch(batch []*model.Span) error {
 	return tx.Commit()
 }
 
-func (worker *WriteWorker) writeIndexBatch(batch []*model.Span) error {
+func (worker *WriteWorker) writeIndexBatch(batch []SpanAndTenant) error {
 	tx, err := worker.params.db.Begin()
 	if err != nil {
 		return err
@@ -181,7 +189,9 @@ func (worker *WriteWorker) writeIndexBatch(batch []*model.Span) error {
 
 	defer statement.Close()
 
-	for _, span := range batch {
+	for _, spanAndTenant := range batch {
+		span := spanAndTenant.span
+
 		keys, values := uniqueTagsForSpan(span)
 		if worker.params.tenant == "" {
 			_, err = statement.Exec(
@@ -194,8 +204,14 @@ func (worker *WriteWorker) writeIndexBatch(batch []*model.Span) error {
 				values,
 			)
 		} else {
+			tenant := worker.params.tenant
+
+			if spanAndTenant.tenant != "" {
+				tenant = spanAndTenant.tenant
+			}
+
 			_, err = statement.Exec(
-				worker.params.tenant,
+				tenant,
 				span.StartTime,
 				span.TraceID.String(),
 				span.Process.ServiceName,

@@ -4,7 +4,6 @@ import (
 	"math"
 	"sync"
 
-	"github.com/jaegertracing/jaeger/model"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +26,7 @@ type WriteWorkerPool struct {
 
 	finish  chan bool
 	done    sync.WaitGroup
-	batches chan []*model.Span
+	batches chan []SpanAndTenant
 
 	maxSpanCount int
 	mutex        sync.Mutex
@@ -46,7 +45,7 @@ func NewWorkerPool(params *WorkerParams, maxSpanCount int) WriteWorkerPool {
 		params:  params,
 		finish:  make(chan bool),
 		done:    sync.WaitGroup{},
-		batches: make(chan []*model.Span),
+		batches: make(chan []SpanAndTenant),
 
 		mutex:      sync.Mutex{},
 		workers:    newWorkerHeap(100),
@@ -111,7 +110,7 @@ func (pool *WriteWorkerPool) Work() {
 	}
 }
 
-func (pool *WriteWorkerPool) WriteBatch(batch []*model.Span) {
+func (pool *WriteWorkerPool) WriteBatch(batch []SpanAndTenant) {
 	pool.batches <- batch
 }
 

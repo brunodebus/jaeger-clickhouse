@@ -10,6 +10,7 @@ import (
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/metadata"
 )
 
 type Encoding string
@@ -32,12 +33,17 @@ var (
 	})
 )
 
+type SpanAndTenant struct {
+	span   *model.Span
+	tenant string
+}
+
 // SpanWriter for writing spans to ClickHouse
 type SpanWriter struct {
 	workerParams WorkerParams
 
 	size   int64
-	spans  chan *model.Span
+	spans  chan SpanAndTenant
 	finish chan bool
 	done   sync.WaitGroup
 }
@@ -68,7 +74,7 @@ func NewSpanWriter(
 			delay:      delay,
 		},
 		size:   size,
-		spans:  make(chan *model.Span, size),
+		spans:  make(chan SpanAndTenant, size),
 		finish: make(chan bool),
 	}
 
@@ -88,7 +94,7 @@ func (w *SpanWriter) registerMetrics() {
 func (w *SpanWriter) backgroundWriter(maxSpanCount int) {
 	pool := NewWorkerPool(&w.workerParams, maxSpanCount)
 	go pool.Work()
-	batch := make([]*model.Span, 0, w.size)
+	batch := make([]SpanAndTenant, 0, w.size)
 
 	timer := time.After(w.workerParams.delay)
 	last := time.Now()
@@ -123,7 +129,7 @@ func (w *SpanWriter) backgroundWriter(maxSpanCount int) {
 		if flush {
 			pool.WriteBatch(batch)
 
-			batch = make([]*model.Span, 0, w.size)
+			batch = make([]SpanAndTenant, 0, w.size)
 			last = time.Now()
 		}
 
@@ -139,8 +145,16 @@ func (w *SpanWriter) backgroundWriter(maxSpanCount int) {
 }
 
 // WriteSpan writes the encoded span
-func (w *SpanWriter) WriteSpan(_ context.Context, span *model.Span) error {
-	w.spans <- span
+func (w *SpanWriter) WriteSpan(ctx context.Context, span *model.Span) error {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		tenants := md.Get("x-tenant")
+		if len(tenants) == 0 {
+			w.spans <- SpanAndTenant{span, ""}
+		} else {
+			w.spans <- SpanAndTenant{span, tenants[0]}
+		}
+	}
+
 	return nil
 }
 

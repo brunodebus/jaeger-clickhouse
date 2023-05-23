@@ -13,6 +13,7 @@ import (
 	"github.com/jaegertracing/jaeger/model"
 	"github.com/jaegertracing/jaeger/storage/spanstore"
 	opentracing "github.com/opentracing/opentracing-go"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -72,8 +73,28 @@ func (r *TraceReader) getTraces(ctx context.Context, traceIDs []model.TraceID) (
 	query := fmt.Sprintf("SELECT model FROM %s PREWHERE traceID IN (%s)", r.spansTable, "?"+strings.Repeat(",?", len(traceIDs)-1))
 
 	if r.tenant != "" {
-		query += " AND tenant = ?"
-		args = append(args, r.tenant)
+		var tenants []string
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			tenants = md.Get("x-tenant")
+		}
+
+		if len(tenants) == 0 {
+			query += " AND tenant = ?"
+			args = append(args, r.tenant)
+		} else {
+			for i, tenant := range tenants {
+				if i == 0 {
+					query += " AND ("
+				} else {
+					query += " OR "
+				}
+
+				query += "tenant = ?"
+				args = append(args, tenant)
+			}
+			query += ")"
+		}
 	}
 
 	if r.maxNumSpans > 0 {
@@ -187,8 +208,28 @@ func (r *TraceReader) GetServices(ctx context.Context) ([]string, error) {
 	args := make([]interface{}, 0)
 
 	if r.tenant != "" {
-		query += " WHERE tenant = ?"
-		args = append(args, r.tenant)
+		var tenants []string
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			tenants = md.Get("x-tenant")
+		}
+
+		if len(tenants) == 0 {
+			query += " WHERE tenant = ?"
+			args = append(args, r.tenant)
+		} else {
+			for i, tenant := range tenants {
+				if i == 0 {
+					query += " WHERE ("
+				} else {
+					query += " OR "
+				}
+
+				query += "tenant = ?"
+				args = append(args, tenant)
+			}
+			query += ")"
+		}
 	}
 
 	query += " GROUP BY service"
@@ -215,8 +256,28 @@ func (r *TraceReader) GetOperations(
 	args := make([]interface{}, 0)
 
 	if r.tenant != "" {
-		query += " tenant = ? AND"
-		args = append(args, r.tenant)
+		var tenants []string
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			tenants = md.Get("x-tenant")
+		}
+
+		if len(tenants) == 0 {
+			query += " tenant = ? AND"
+			args = append(args, r.tenant)
+		} else {
+			for i, tenant := range tenants {
+				if i == 0 {
+					query += "("
+				} else {
+					query += " OR "
+				}
+
+				query += "tenant = ?"
+				args = append(args, tenant)
+			}
+			query += ") AND"
+		}
 	}
 
 	query += " service = ? GROUP BY operation, spankind ORDER BY operation"
@@ -348,8 +409,28 @@ func (r *TraceReader) findTraceIDsInRange(ctx context.Context, params *spanstore
 	args := []interface{}{params.ServiceName}
 
 	if r.tenant != "" {
-		query += " AND tenant = ?"
-		args = append(args, r.tenant)
+		var tenants []string
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			tenants = md.Get("x-tenant")
+		}
+
+		if len(tenants) == 0 {
+			query += " AND tenant = ?"
+			args = append(args, r.tenant)
+		} else {
+			for i, tenant := range tenants {
+				if i == 0 {
+					query += " AND ("
+				} else {
+					query += " OR "
+				}
+
+				query += "tenant = ?"
+				args = append(args, tenant)
+			}
+			query += ")"
+		}
 	}
 
 	if params.OperationName != "" {

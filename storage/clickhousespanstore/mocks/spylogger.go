@@ -86,7 +86,7 @@ func (logger SpyLogger) ImpliedArgs() []interface{} {
 	panic("implement me")
 }
 
-func (logger SpyLogger) With(args ...interface{}) hclog.Logger {
+func (logger SpyLogger) With(_ ...interface{}) hclog.Logger {
 	panic("implement me")
 }
 
@@ -94,15 +94,15 @@ func (logger SpyLogger) Name() string {
 	return "spy logger"
 }
 
-func (logger SpyLogger) Named(name string) hclog.Logger {
+func (logger SpyLogger) Named(_ string) hclog.Logger {
 	panic("implement me")
 }
 
-func (logger SpyLogger) ResetNamed(name string) hclog.Logger {
+func (logger SpyLogger) ResetNamed(_ string) hclog.Logger {
 	panic("implement me")
 }
 
-func (logger SpyLogger) SetLevel(level hclog.Level) {
+func (logger SpyLogger) SetLevel(_ hclog.Level) {
 	panic("implement me")
 }
 
@@ -110,10 +110,10 @@ func (logger SpyLogger) GetLevel() hclog.Level {
 	panic("implement me")
 }
 
-func (logger SpyLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
+func (logger SpyLogger) StandardLogger(_ *hclog.StandardLoggerOptions) *log.Logger {
 	panic("implement me")
 }
 
-func (logger SpyLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (logger SpyLogger) StandardWriter(_ *hclog.StandardLoggerOptions) io.Writer {
 	panic("implement me")
 }
