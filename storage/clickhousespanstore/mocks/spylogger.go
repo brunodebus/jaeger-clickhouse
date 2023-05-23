@@ -106,6 +106,10 @@ func (logger SpyLogger) SetLevel(level hclog.Level) {
 	panic("implement me")
 }
 
+func (logger SpyLogger) GetLevel() hclog.Level {
+	panic("implement me")
+}
+
 func (logger SpyLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
 	panic("implement me")
 }
