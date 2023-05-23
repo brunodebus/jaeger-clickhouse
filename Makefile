@@ -3,7 +3,7 @@ GOARCH ?= $(shell go env GOARCH)
 GOBUILD=CGO_ENABLED=0 installsuffix=cgo go build -trimpath
 
 TOOLS_MOD_DIR = ./internal/tools
-JAEGER_VERSION ?= 1.32.0
+JAEGER_VERSION ?= 1.45.0
 
 DOCKER_REPO ?= ghcr.io/jaegertracing/jaeger-clickhouse
 DOCKER_TAG ?= latest
@@ -42,7 +42,7 @@ run:
 
 .PHONY: run-hotrod
 run-hotrod:
-	docker run --rm --link jaeger --env JAEGER_AGENT_HOST=jaeger --env JAEGER_AGENT_PORT=6831 -p8080:8080 jaegertracing/example-hotrod:${JAEGER_VERSION} all
+	docker run --rm --link jaeger --env OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14268/api/traces -p8080-8083:8080-8083 jaegertracing/example-hotrod:${JAEGER_VERSION} all
 
 .PHONY: fmt
 fmt:
