@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	clickHouseImage = "clickhouse/clickhouse-server:22"
-	jaegerImage     = "jaegertracing/all-in-one:1.32.0"
+	clickHouseImage = "clickhouse/clickhouse-server:23"
+	jaegerImage     = "jaegertracing/all-in-one:1.45.0"
 
 	networkName     = "chi-jaeger-test"
 	clickhousePort  = "9000/tcp"
